@@ -5,6 +5,7 @@ import App from './App';
 import DashboardExperience from './components/DashboardExperience';
 import './styles.css';
 import './vercel-overrides.css';
+import './auth-v2.css';
 
 createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
