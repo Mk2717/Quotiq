@@ -7,6 +7,7 @@ import './styles.css';
 import './vercel-overrides.css';
 import './auth-v2.css';
 import './workspace-pages.css';
+import './estimates-v2.css';
 
 createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
