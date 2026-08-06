@@ -12,6 +12,7 @@ import './vercel-overrides.css';
 import './auth-v2.css';
 import './crm.css';
 import './estimate-builder.css';
+import './estimate-fixes.css';
 import './document-workspace.css';
 
 createRoot(document.getElementById('root')!).render(
