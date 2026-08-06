@@ -1,0 +1,93 @@
+/* Unified full-page behavior for routed CRM and estimate modules. */
+body.crm-active,
+body.estimate-active {
+  overflow: hidden;
+}
+
+body.crm-active .shell,
+body.estimate-active .shell {
+  display: none !important;
+}
+
+body.crm-active .crmMount,
+body.estimate-active .estimateMount {
+  position: fixed !important;
+  inset: 0 !important;
+  width: 100% !important;
+  height: 100dvh !important;
+  z-index: 100 !important;
+  overflow: auto !important;
+  visibility: visible !important;
+  background: #f4f7fb !important;
+}
+
+/* Keep estimate editor navigation visible above sticky headers and forms. */
+.estimatePanelControls {
+  position: fixed !important;
+  top: 16px !important;
+  right: 18px !important;
+  z-index: 250 !important;
+  display: flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+}
+
+.estimatePanelControls button {
+  min-height: 42px;
+  border: 1px solid #dbe3ee;
+  background: rgba(255,255,255,.97);
+  color: #0f172a;
+  box-shadow: 0 10px 30px rgba(15,23,42,.14);
+  backdrop-filter: blur(12px);
+}
+
+.estimatePanelControls .estimateCloseButton {
+  width: 42px;
+  padding: 0;
+  display: grid;
+  place-items: center;
+}
+
+body.estimate-active .builderPage {
+  padding-top: 68px !important;
+}
+
+body.estimate-active .builderTop {
+  top: 0 !important;
+  padding-right: 210px !important;
+}
+
+/* Customer modal should cover only the CRM module, never reveal the old app. */
+body.crm-active .crmOverlay {
+  position: fixed !important;
+  inset: 0 !important;
+  z-index: 220 !important;
+  background: rgba(15,23,42,.58) !important;
+}
+
+body.crm-active .crmModal,
+body.crm-active .crmDrawer {
+  position: relative;
+  z-index: 221;
+}
+
+@media (max-width: 780px) {
+  .estimatePanelControls {
+    top: 10px !important;
+    left: 10px !important;
+    right: 10px !important;
+    justify-content: space-between;
+  }
+
+  .estimatePanelControls button:first-child {
+    flex: 1;
+  }
+
+  body.estimate-active .builderPage {
+    padding-top: 72px !important;
+  }
+
+  body.estimate-active .builderTop {
+    padding-right: 0 !important;
+  }
+}
