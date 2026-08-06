@@ -7,7 +7,6 @@ import './styles.css';
 import './vercel-overrides.css';
 import './auth-v2.css';
 import './workspace-pages.css';
-import './quote-studio.css';
 
 createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
