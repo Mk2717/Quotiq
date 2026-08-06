@@ -1,0 +1,9 @@
+export type Customer={id:string;name:string;phone:string;email:string;address:string};
+export type LineItem={id:string;description:string;qty:number;unit:string;rate:number};
+export type Estimate={id:string;customerId:string;customer:string;project:string;amount:number;status:'Draft'|'Pending'|'Accepted';date:string;items:LineItem[];tax:number;discount:number};
+export type Invoice={id:string;customerId?:string;customer:string;project:string;amount:number;paid:number;status:'Unpaid'|'Partially Paid'|'Paid';date:string;items:LineItem[];tax?:number;discount?:number};
+export type Business={name:string;email:string;phone:string;address:string;taxId:string;bank:string;accountName:string;accountNumber:string;mobileMoney:string;estimatePrefix:string;invoicePrefix:string;currency:string;logo?:string;signature?:string;stamp?:string;terms?:string};
+export type Project={id:string;customerId:string;customer:string;name:string;status:'Planned'|'In Progress'|'Completed'|'On Hold';startDate:string;dueDate:string;budget:number;spent:number;assignee:string;notes:string};
+export type InventoryItem={id:string;name:string;sku:string;category:string;quantity:number;reorderLevel:number;unit:string;cost:number;sellPrice:number};
+export type Expense={id:string;date:string;category:string;description:string;projectId:string;amount:number;paymentMethod:string};
+export type TeamMember={id:string;name:string;role:string;phone:string;email:string;status:'Active'|'Inactive'};
