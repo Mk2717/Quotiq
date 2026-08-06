@@ -2,6 +2,14 @@
 
 A Vite, React and TypeScript contractor platform with customers, estimates, invoices, payments, receipts, branded printable PDFs, offline caching and optional Supabase authentication/cloud sync.
 
+## Live test site
+
+Quotiq is configured for GitHub Pages deployment at:
+
+`https://mk2717.github.io/Quotiq/`
+
+Every push to `main` runs the deployment workflow automatically.
+
 ## Run locally
 
 ```bash
@@ -31,10 +39,6 @@ This release adds projects, inventory, expenses, team assignments, low-stock ale
 
 ## GitHub Pages deployment
 
-The repository includes an automatic GitHub Pages workflow. After GitHub Pages is configured to use **GitHub Actions**, every push to `main` builds and deploys the app.
-
-Expected testing URL:
-
-`https://mk2717.github.io/Quotiq/`
+The repository includes an automatic GitHub Pages workflow. GitHub Pages must use **GitHub Actions** as its build source.
 
 Supabase credentials are optional. Add `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` as repository Actions secrets to enable cloud mode on the deployed site. Without them, the deployed app runs in local/offline mode.
