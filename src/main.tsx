@@ -14,6 +14,7 @@ import './crm.css';
 import './estimate-builder.css';
 import './document-workspace.css';
 import './estimate-panel-controls.css';
+import './module-layout-fix.css';
 
 createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
