@@ -35,7 +35,7 @@ body.estimate-active .estimateMount {
 .estimatePanelControls button {
   min-height: 42px;
   border: 1px solid #dbe3ee;
-  background: rgba(255,255,255,.97);
+  background: rgba(255,255,255,.98);
   color: #0f172a;
   box-shadow: 0 10px 30px rgba(15,23,42,.14);
   backdrop-filter: blur(12px);
@@ -57,18 +57,77 @@ body.estimate-active .builderTop {
   padding-right: 210px !important;
 }
 
-/* Customer modal should cover only the CRM module, never reveal the old app. */
-body.crm-active .crmOverlay {
+/* Responsive modal foundation. The backdrop stays subtle while the form remains compact. */
+body.crm-active .crmOverlay,
+body.estimate-active .crmOverlay {
   position: fixed !important;
   inset: 0 !important;
   z-index: 220 !important;
-  background: rgba(15,23,42,.58) !important;
+  display: grid !important;
+  place-items: center !important;
+  padding: clamp(18px, 4vw, 48px) !important;
+  overflow: auto !important;
+  background: rgba(15,23,42,.42) !important;
+  backdrop-filter: blur(7px) !important;
+  -webkit-backdrop-filter: blur(7px) !important;
 }
 
 body.crm-active .crmModal,
-body.crm-active .crmDrawer {
-  position: relative;
-  z-index: 221;
+body.estimate-active .crmModal {
+  position: relative !important;
+  z-index: 221 !important;
+  width: min(720px, 100%) !important;
+  max-height: min(82dvh, 760px) !important;
+  margin: 0 !important;
+  overflow: auto !important;
+  overscroll-behavior: contain !important;
+  border-radius: 24px !important;
+  background: #fff !important;
+  box-shadow: 0 28px 90px rgba(15,23,42,.28) !important;
+  scrollbar-gutter: stable !important;
+}
+
+body.crm-active .crmDrawer,
+body.estimate-active .crmDrawer {
+  position: relative !important;
+  z-index: 221 !important;
+  width: min(520px, 100%) !important;
+  max-height: 92dvh !important;
+  border-radius: 24px !important;
+  overflow: auto !important;
+  overscroll-behavior: contain !important;
+  box-shadow: 0 28px 90px rgba(15,23,42,.28) !important;
+}
+
+/* Keep form headers/actions visible inside long forms. */
+body.crm-active .crmModal .modalHead,
+body.estimate-active .crmModal .modalHead {
+  position: sticky !important;
+  top: -1px !important;
+  z-index: 5 !important;
+  padding-bottom: 14px !important;
+  background: rgba(255,255,255,.98) !important;
+  backdrop-filter: blur(10px) !important;
+}
+
+body.crm-active .crmModal .modalActions,
+body.estimate-active .crmModal .modalActions {
+  position: sticky !important;
+  bottom: -1px !important;
+  z-index: 5 !important;
+  margin: 18px -24px -24px !important;
+  padding: 16px 24px 20px !important;
+  background: rgba(255,255,255,.98) !important;
+  backdrop-filter: blur(10px) !important;
+  box-shadow: 0 -10px 24px rgba(15,23,42,.06) !important;
+}
+
+@media (max-width: 900px) {
+  body.crm-active .crmModal,
+  body.estimate-active .crmModal {
+    width: min(680px, 100%) !important;
+    max-height: 86dvh !important;
+  }
 }
 
 @media (max-width: 780px) {
@@ -89,5 +148,63 @@ body.crm-active .crmDrawer {
 
   body.estimate-active .builderTop {
     padding-right: 0 !important;
+  }
+
+  body.crm-active .crmOverlay,
+  body.estimate-active .crmOverlay {
+    align-items: end !important;
+    padding: 12px !important;
+    background: rgba(15,23,42,.34) !important;
+  }
+
+  body.crm-active .crmModal,
+  body.estimate-active .crmModal,
+  body.crm-active .crmDrawer,
+  body.estimate-active .crmDrawer {
+    width: 100% !important;
+    max-height: min(88dvh, 760px) !important;
+    border-radius: 22px 22px 16px 16px !important;
+    padding: 18px !important;
+  }
+
+  body.crm-active .crmModal .modalActions,
+  body.estimate-active .crmModal .modalActions {
+    margin: 16px -18px -18px !important;
+    padding: 14px 18px calc(14px + env(safe-area-inset-bottom)) !important;
+  }
+}
+
+@media (max-width: 520px) {
+  body.crm-active .crmOverlay,
+  body.estimate-active .crmOverlay {
+    padding: 8px !important;
+  }
+
+  body.crm-active .crmModal,
+  body.estimate-active .crmModal,
+  body.crm-active .crmDrawer,
+  body.estimate-active .crmDrawer {
+    max-height: 91dvh !important;
+    border-radius: 20px 20px 12px 12px !important;
+    padding: 16px !important;
+  }
+
+  body.crm-active .crmFormGrid,
+  body.estimate-active .crmFormGrid {
+    grid-template-columns: 1fr !important;
+    gap: 12px !important;
+  }
+
+  body.crm-active .modalActions,
+  body.estimate-active .modalActions {
+    display: grid !important;
+    grid-template-columns: 1fr 1fr !important;
+    gap: 10px !important;
+  }
+
+  body.crm-active .modalActions > *,
+  body.estimate-active .modalActions > * {
+    width: 100% !important;
+    min-height: 46px !important;
   }
 }
