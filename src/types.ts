@@ -1,4 +1,4 @@
-export type Customer={id:string;name:string;phone:string;email:string;address:string};
+export type Customer={id:string;name:string;phone:string;email:string;address:string;company?:string;contactPerson?:string;siteAddress?:string;billingAddress?:string;gpsLocation?:string;siteType?:string;status?:'Active'|'Inactive';tags?:string[];notes?:string;preferredInstallDate?:string;networkAvailability?:string;existingEquipment?:string;warrantyExpiry?:string;maintenanceInterval?:string;createdAt?:string;updatedAt?:string};
 export type LineItem={id:string;description:string;qty:number;unit:string;rate:number};
 export type Estimate={id:string;customerId:string;customer:string;project:string;amount:number;status:'Draft'|'Pending'|'Accepted';date:string;items:LineItem[];tax:number;discount:number};
 export type Invoice={id:string;customerId?:string;customer:string;project:string;amount:number;paid:number;status:'Unpaid'|'Partially Paid'|'Paid';date:string;items:LineItem[];tax?:number;discount?:number};
