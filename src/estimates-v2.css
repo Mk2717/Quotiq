@@ -896,6 +896,20 @@
 .ev2Readiness .done i { background: #1f9d69; border-color: #1f9d69; color: #fff; }
 .ev2BuilderRail .ev2SummaryPreview { margin-top: 16px; }
 .ev2RailSave { width: 100%; margin-top: 8px; padding: 10px; border: 0; background: transparent; color: #cbd5e1; display: flex; align-items: center; justify-content: center; gap: 8px; font-weight: 800; cursor: pointer; }
+.ev2TradePicker { display: flex; justify-content: space-between; align-items: center; gap: 20px; padding: 20px 22px; border: 1px solid #cfe0fa; border-radius: 16px; background: linear-gradient(135deg, #f7fbff, #eef4ff); }
+.ev2TradePicker > div:first-child > span { color: #3156f5; font-size: 10px; font-weight: 900; letter-spacing: .12em; }
+.ev2TradePicker h2 { margin: 5px 0 4px; font-size: 18px; }
+.ev2TradePicker p { margin: 0; color: #68778b; font-size: 13px; }
+.ev2TradeControls { display: flex; gap: 8px; flex: 0 0 auto; }
+.ev2TradeControls select { min-width: 205px; border: 1px solid #c9d5e5; border-radius: 10px; padding: 10px 12px; background: #fff; color: #172033; font: inherit; font-weight: 700; }
+.ev2TradeControls button { display: inline-flex; align-items: center; justify-content: center; gap: 7px; border: 0; border-radius: 10px; padding: 10px 13px; background: #132440; color: #fff; font-weight: 800; cursor: pointer; }
+.ev2TradeLabel { display: inline-flex; margin: -17px 0 22px; padding: 6px 11px; border-radius: 999px; background: #eaf3ff; color: #1459c7; font-size: 10px; font-weight: 900; letter-spacing: .08em; text-transform: uppercase; position: relative; }
+.ev2Quote th:nth-child(3), .ev2Quote td:nth-child(3) { text-align: center; }
+.ev2Quote .ev2QtyCell { color: #0b2348; font-size: 14px; font-weight: 900; background: #f7faff; }
+.ev2Quote .ev2MoneyCell { white-space: nowrap; font-variant-numeric: tabular-nums; }
+.ev2Quote td:last-child { color: #0b4fb3; background: #f7faff; }
+.ev2Quote tbody tr:nth-child(even) td { border-bottom-color: #dbe4ef; }
+.ev2Quote .ev2Grand { border-width: 2px; box-shadow: 0 8px 22px rgba(37, 99, 235, .08); }
 
 @media (max-width: 1120px) {
   .ev2BuilderShell { grid-template-columns: 1fr; }
@@ -916,4 +930,6 @@
   .ev2BuilderShell .ev2LineTotal,
   .ev2BuilderShell .ev2ItemActions { grid-column: 1 / -1; }
   .ev2BuilderRail { border-radius: 14px; padding: 18px; }
+  .ev2TradePicker, .ev2TradeControls { flex-direction: column; align-items: stretch; }
+  .ev2TradeControls select { min-width: 0; width: 100%; }
 }
