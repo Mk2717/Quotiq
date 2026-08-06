@@ -1,0 +1,14 @@
+{
+  "name": "Quotiq Contractor Operations",
+  "short_name": "Quotiq",
+  "description": "Estimates, invoices, customers, projects and field operations for contractors.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#f4f7fb",
+  "theme_color": "#0b2447",
+  "orientation": "any",
+  "icons": [
+    { "src": "/quotiq-mark.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }
+  ]
+}

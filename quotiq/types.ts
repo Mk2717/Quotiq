@@ -1,0 +1,16 @@
+export type Customer={id:string;name:string;phone:string;email:string;address:string;company?:string;contactPerson?:string;siteAddress?:string;billingAddress?:string;gpsLocation?:string;siteType?:string;status?:'Active'|'Inactive';tags?:string[];notes?:string;preferredInstallDate?:string;networkAvailability?:string;existingEquipment?:string;warrantyExpiry?:string;maintenanceInterval?:string;createdAt?:string;updatedAt?:string};
+export type LineItem={id:string;description:string;qty:number;unit:string;rate:number};
+export type Estimate={id:string;customerId:string;customer:string;project:string;amount:number;status:'Draft'|'Pending'|'Accepted';date:string;items:LineItem[];tax:number;discount:number;validDays?:number;reference?:string;trade?:string;notes?:string;terms?:string;paymentDetails?:string};
+export type PaymentRecord={id:string;date:string;amount:number;method:string;reference?:string};
+export type Invoice={id:string;customerId?:string;customer:string;project:string;amount:number;paid:number;status:'Unpaid'|'Partially Paid'|'Paid';date:string;items:LineItem[];tax?:number;discount?:number;dueDate?:string;lastPaymentDate?:string;estimateId?:string;payments?:PaymentRecord[]};
+export type Business={name:string;email:string;phone:string;address:string;taxId:string;bank:string;accountName:string;accountNumber:string;mobileMoney:string;estimatePrefix:string;invoicePrefix:string;currency:string;logo?:string;signature?:string;stamp?:string;terms?:string};
+export type ProjectTask={id:string;title:string;completed:boolean;assignee?:string;dueDate?:string};
+export type ProjectMaterial={id:string;inventoryId?:string;name:string;quantity:number;unit:string;cost:number};
+export type ProjectPhoto={id:string;name:string;dataUrl:string;caption?:string;date:string};
+export type ProjectActivity={id:string;date:string;type:string;message:string};
+export type Project={id:string;customerId:string;customer:string;name:string;status:'Planned'|'In Progress'|'Completed'|'On Hold';startDate:string;dueDate:string;budget:number;spent:number;assignee:string;notes:string;stage?:string;siteAddress?:string;tasks?:ProjectTask[];materials?:ProjectMaterial[];photos?:ProjectPhoto[];activities?:ProjectActivity[]};
+export type InventoryItem={id:string;name:string;sku:string;category:string;quantity:number;reorderLevel:number;unit:string;cost:number;sellPrice:number;itemType?:'Material'|'Service';supplierId?:string;trade?:string;notes?:string};
+export type Supplier={id:string;name:string;contactPerson?:string;phone:string;email?:string;address?:string;categories?:string;notes?:string};
+export type StockMovement={id:string;itemId:string;itemName:string;date:string;type:'Stock In'|'Stock Out'|'Adjustment';quantity:number;note:string;supplierId?:string};
+export type Expense={id:string;date:string;category:string;description:string;projectId:string;amount:number;paymentMethod:string};
+export type TeamMember={id:string;name:string;role:string;phone:string;email:string;status:'Active'|'Inactive'};

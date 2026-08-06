@@ -1,0 +1,11 @@
+@import "../quotiq/styles.css";
+@import "../quotiq/vercel-overrides.css";
+@import "../quotiq/auth-v2.css";
+@import "../quotiq/workspace-pages.css";
+@import "../quotiq/estimates-v2.css";
+@import "../quotiq/invoices-v2.css";
+@import "../quotiq/inventory-v2.css";
+@import "../quotiq/projects-v2.css";
+@import "../quotiq/reports-v2.css";
+@import "../quotiq/automation-v2.css";
+@import "../quotiq/mobile-offline.css";
