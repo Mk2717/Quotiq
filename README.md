@@ -10,6 +10,8 @@ Quotiq is configured for GitHub Pages deployment at:
 
 Every push to `main` runs the deployment workflow automatically.
 
+Deployment retriggered after GitHub Pages was enabled.
+
 ## Run locally
 
 ```bash
