@@ -1,0 +1,7 @@
+project_id = "quotiq"
+
+[functions.client-approval]
+verify_jwt = false
+
+[functions.service-booking]
+verify_jwt = false

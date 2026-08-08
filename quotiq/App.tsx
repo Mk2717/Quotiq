@@ -1,27 +1,1087 @@
-import{useEffect,useMemo,useRef,useState}from'react';import{NavLink,Route,Routes}from'react-router-dom';import{LayoutDashboard,FileText,ReceiptText,Users,FolderKanban,Package,WalletCards,BarChart3,Settings,Plus,Menu,X,TrendingUp,Clock3,CheckCircle2,Trash2,Boxes,UserCog,BellRing}from'lucide-react';import type{Session}from'@supabase/supabase-js';import{AuthGate}from'./components/AuthGate';import{getStored,setStored,uid}from'./lib/storage';import{cloudConfigured,loadWorkspace,saveWorkspace,signOut}from'./lib/supabase';import type{Business,Customer,Estimate,Invoice,Project,InventoryItem,Expense,TeamMember}from'./types';
-const today=()=>new Date().toISOString().slice(0,10);const money=(v=0,c='GHS')=>new Intl.NumberFormat('en-GH',{style:'currency',currency:c}).format(v);
-const businessSeed:Business={name:'Quotiq Demo Company',email:'hello@example.com',phone:'024 000 0000',address:'Sunyani, Ghana',taxId:'',bank:'',accountName:'',accountNumber:'',mobileMoney:'',estimatePrefix:'EST',invoicePrefix:'INV',currency:'GHS',terms:'Estimates are valid for 14 days.'};
-const customersSeed:Customer[]=[{id:'CUS-1001',name:'Ama Serwaa',phone:'0245550142',email:'ama@example.com',address:'Sunyani'}];
-const estimatesSeed:Estimate[]=[];const invoicesSeed:Invoice[]=[];
-const projectsSeed:Project[]=[{id:'PRJ-1001',customerId:'CUS-1001',customer:'Ama Serwaa',name:'8-camera CCTV installation',status:'In Progress',startDate:today(),dueDate:today(),budget:6850,spent:3100,assignee:'Michael',notes:'Install and commission system.'}];
-const inventorySeed:InventoryItem[]=[{id:'STK-1001',name:'Hikvision Dome Camera',sku:'CAM-HIK-2MP',category:'CCTV',quantity:12,reorderLevel:5,unit:'pcs',cost:350,sellPrice:480}];
-const expensesSeed:Expense[]=[{id:'EXP-1001',date:today(),category:'Materials',description:'Camera accessories',projectId:'PRJ-1001',amount:620,paymentMethod:'Mobile Money'}];
-const teamSeed:TeamMember[]=[{id:'TM-1001',name:'Michael Adu Gyamfi',role:'Owner',phone:'',email:'',status:'Active'}];
-const nav=[['/','Dashboard',LayoutDashboard],['/projects','Projects',FolderKanban],['/inventory','Inventory',Package],['/expenses','Expenses',WalletCards],['/team','Team',UserCog],['/reports','Reports',BarChart3],['/automation','Automation',BellRing],['/customers','Customers',Users],['/estimates','Estimates',FileText],['/invoices','Invoices',ReceiptText],['/settings','Settings',Settings]]as const;
-export default function App(){return <AuthGate>{session=><Main session={session}/>}</AuthGate>}
-function Main({session}:{session:Session|null}){const[menu,setMenu]=useState(false);const[business,setBusiness]=useStored('q-business',businessSeed);const[customers,setCustomers]=useStored('q-customers',customersSeed);const[estimates,setEstimates]=useStored('q-estimates',estimatesSeed);const[invoices,setInvoices]=useStored('q-invoices',invoicesSeed);const[projects,setProjects]=useStored('q-projects',projectsSeed);const[inventory,setInventory]=useStored('q-inventory',inventorySeed);const[expenses,setExpenses]=useStored('q-expenses',expensesSeed);const[team,setTeam]=useStored('q-team',teamSeed);const hydrated=useRef(false);const[sync,setSync]=useState(session?'syncing':'local');useEffect(()=>{if(!session||hydrated.current)return;hydrated.current=true;loadWorkspace(session.user.id).then(r=>{if(r){setBusiness(r.business||businessSeed);setCustomers(r.customers||[]);setEstimates(r.estimates||[]);setInvoices(r.invoices||[]);setProjects(r.projects||[]);setInventory(r.inventory||[]);setExpenses(r.expenses||[]);setTeam(r.team||[])}setSync('synced')}).catch(()=>setSync('error'))},[session]);useEffect(()=>{if(!session||!hydrated.current)return;setSync('syncing');const t=setTimeout(()=>saveWorkspace(session.user.id,{business,customers,estimates,invoices,projects,inventory,expenses,team}).then(()=>setSync('synced')).catch(()=>setSync('error')),700);return()=>clearTimeout(t)},[session,business,customers,estimates,invoices,projects,inventory,expenses,team]);const props={business,customers,estimates,invoices,projects,inventory,expenses,team,setBusiness,setCustomers,setEstimates,setInvoices,setProjects,setInventory,setExpenses,setTeam};return <div className="shell"><aside className={menu?'side open':'side'}><div className="brand"><b>Q</b><span>Quotiq</span><button className="close" onClick={()=>setMenu(false)}><X/></button></div><nav>{nav.map(([to,label,I])=><NavLink to={to} end={to==='/' } key={to} onClick={()=>setMenu(false)}><I size={18}/>{label}</NavLink>)}</nav><div className="saved"><CheckCircle2/><div><strong>{session?sync==='synced'?'Cloud synced':sync==='syncing'?'Syncing…':'Sync error':'Offline ready'}</strong><small>{session?'Secure workspace backup':'Saved on this device'}</small></div></div></aside><main><header><button className="hamb" onClick={()=>setMenu(true)}><Menu/></button><div><strong>{business.name}</strong><small>Contractor operations</small></div><div className="headerRight"><span className="cloudBadge">{cloudConfigured&&session?'Cloud':'Local'}</span>{session&&<button onClick={()=>signOut()}>Sign out</button>}</div></header><section className="content"><Routes><Route path="/" element={<Dashboard {...props}/>}/><Route path="/projects" element={<Projects {...props}/>}/><Route path="/inventory" element={<Inventory {...props}/>}/><Route path="/expenses" element={<Expenses {...props}/>}/><Route path="/team" element={<Team {...props}/>}/><Route path="/reports" element={<Reports {...props}/>}/><Route path="/customers" element={<SimpleRecords title="Customers" rows={customers} columns={['name','phone','email','address']}/>}/><Route path="/estimates" element={<SimpleRecords title="Estimates" rows={estimates} columns={['id','customer','project','amount','status']}/>}/><Route path="/invoices" element={<SimpleRecords title="Invoices" rows={invoices} columns={['id','customer','project','amount','paid','status']}/>}/><Route path="/settings" element={<SettingsPage business={business} setBusiness={setBusiness}/>}/></Routes></section></main></div>}
-function useStored<T>(key:string,seed:T):[T,(v:T)=>void]{const[v,setV]=useState<T>(()=>getStored(key,seed));return[v,(n:T)=>{setV(n);setStored(key,n)}]}
-function Dashboard(p:any){const revenue=p.invoices.reduce((s:number,i:Invoice)=>s+i.paid,0),outstanding=p.invoices.reduce((s:number,i:Invoice)=>s+i.amount-i.paid,0),expense=p.expenses.reduce((s:number,e:Expense)=>s+e.amount,0),profit=revenue-expense,low=p.inventory.filter((i:InventoryItem)=>i.quantity<=i.reorderLevel).length;return <><Title k="OPERATIONS OVERVIEW" t="Run every job from one place" d="Projects, costs, stock, team and cash flow are now connected."/><div className="stats">{[['Collected',money(revenue,p.business.currency),TrendingUp],['Outstanding',money(outstanding,p.business.currency),Clock3],['Net cash',money(profit,p.business.currency),CheckCircle2],['Low stock',String(low),Boxes]].map(([a,b,I]:any)=><article className="card stat" key={a}><div><span>{a}</span><strong>{b}</strong></div><I/></article>)}</div><div className="grid2"><article className="card"><h2>Active projects</h2>{p.projects.filter((x:Project)=>x.status!=='Completed').slice(0,5).map((x:Project)=><div className="listRow" key={x.id}><div><b>{x.name}</b><small>{x.customer} · {x.assignee}</small></div><span className="pill">{x.status}</span></div>)}</article><article className="card"><h2>Stock alerts</h2>{p.inventory.filter((x:InventoryItem)=>x.quantity<=x.reorderLevel).map((x:InventoryItem)=><div className="listRow" key={x.id}><div><b>{x.name}</b><small>{x.sku}</small></div><strong>{x.quantity} {x.unit}</strong></div>)}{low===0&&<p>No stock alerts.</p>}</article></div></>}
-function Projects(p:any){const empty={customerId:p.customers[0]?.id||'',name:'',status:'Planned',startDate:today(),dueDate:today(),budget:0,spent:0,assignee:p.team[0]?.name||'',notes:''};const[open,setOpen]=useState(false),[f,setF]=useState<any>(empty);const add=()=>{const c=p.customers.find((x:Customer)=>x.id===f.customerId);if(!c||!f.name)return;p.setProjects([{...f,id:uid('PRJ'),customer:c.name},...p.projects]);setOpen(false);setF(empty)};return <><Title k="PROJECT MANAGEMENT" t="Projects" d="Track job status, budget, cost and assigned staff." a={<button className="primary" onClick={()=>setOpen(!open)}><Plus/>New project</button>}/>{open&&<FormCard><div className="grid2"><Field l="Customer"><select value={f.customerId} onChange={e=>setF({...f,customerId:e.target.value})}>{p.customers.map((c:Customer)=><option value={c.id}>{c.name}</option>)}</select></Field><Field l="Project name"><input value={f.name} onChange={e=>setF({...f,name:e.target.value})}/></Field><Field l="Status"><select value={f.status} onChange={e=>setF({...f,status:e.target.value})}>{['Planned','In Progress','Completed','On Hold'].map(x=><option>{x}</option>)}</select></Field><Field l="Assignee"><select value={f.assignee} onChange={e=>setF({...f,assignee:e.target.value})}>{p.team.map((m:TeamMember)=><option>{m.name}</option>)}</select></Field><Field l="Start date"><input type="date" value={f.startDate} onChange={e=>setF({...f,startDate:e.target.value})}/></Field><Field l="Due date"><input type="date" value={f.dueDate} onChange={e=>setF({...f,dueDate:e.target.value})}/></Field><Field l="Budget"><input type="number" value={f.budget} onChange={e=>setF({...f,budget:+e.target.value})}/></Field><Field l="Spent"><input type="number" value={f.spent} onChange={e=>setF({...f,spent:+e.target.value})}/></Field></div><button className="primary" onClick={add}>Save project</button></FormCard>}<Cards rows={p.projects} render={(x:Project)=><article className="card project"><div className="titleRow"><div><small>{x.id}</small><h3>{x.name}</h3><span>{x.customer}</span></div><span className="pill">{x.status}</span></div><p>{x.startDate} → {x.dueDate}</p><div className="progress"><i style={{width:`${Math.min(100,x.budget?x.spent/x.budget*100:0)}%`}}/></div><div className="projectFoot"><span>Spent {money(x.spent,p.business.currency)} / {money(x.budget,p.business.currency)}</span><b>{x.assignee}</b></div></article>}/></>}
-function Inventory(p:any){const empty={name:'',sku:'',category:'',quantity:0,reorderLevel:5,unit:'pcs',cost:0,sellPrice:0};const[open,setOpen]=useState(false),[f,setF]=useState<any>(empty);const add=()=>{if(!f.name)return;p.setInventory([{...f,id:uid('STK')},...p.inventory]);setF(empty);setOpen(false)};return <><Title k="STOCK CONTROL" t="Inventory" d="Manage materials, costs, selling prices and reorder alerts." a={<button className="primary" onClick={()=>setOpen(!open)}><Plus/>Add item</button>}/>{open&&<FormCard><AutoFields f={f} setF={setF}/><button className="primary" onClick={add}>Save item</button></FormCard>}<article className="card"><DataTable rows={p.inventory} cols={['name','sku','category','quantity','reorderLevel','unit','cost','sellPrice']} currency={p.business.currency}/></article></>}
-function Expenses(p:any){const empty={date:today(),category:'Materials',description:'',projectId:'',amount:0,paymentMethod:'Mobile Money'};const[open,setOpen]=useState(false),[f,setF]=useState<any>(empty);const add=()=>{if(!f.description||f.amount<=0)return;p.setExpenses([{...f,id:uid('EXP')},...p.expenses]);setF(empty);setOpen(false)};return <><Title k="COST TRACKING" t="Expenses" d="Record project and overhead spending for accurate profit reporting." a={<button className="primary" onClick={()=>setOpen(!open)}><Plus/>Record expense</button>}/>{open&&<FormCard><div className="grid2"><Field l="Date"><input type="date" value={f.date} onChange={e=>setF({...f,date:e.target.value})}/></Field><Field l="Category"><select value={f.category} onChange={e=>setF({...f,category:e.target.value})}>{['Materials','Transport','Labour','Fuel','Tools','Meals','Other'].map(x=><option>{x}</option>)}</select></Field><Field l="Description"><input value={f.description} onChange={e=>setF({...f,description:e.target.value})}/></Field><Field l="Project"><select value={f.projectId} onChange={e=>setF({...f,projectId:e.target.value})}><option value="">General overhead</option>{p.projects.map((x:Project)=><option value={x.id}>{x.name}</option>)}</select></Field><Field l="Amount"><input type="number" value={f.amount} onChange={e=>setF({...f,amount:+e.target.value})}/></Field><Field l="Payment method"><input value={f.paymentMethod} onChange={e=>setF({...f,paymentMethod:e.target.value})}/></Field></div><button className="primary" onClick={add}>Save expense</button></FormCard>}<article className="card"><DataTable rows={p.expenses} cols={['date','category','description','projectId','amount','paymentMethod']} currency={p.business.currency}/></article></>}
-function Team(p:any){const empty={name:'',role:'Technician',phone:'',email:'',status:'Active'};const[open,setOpen]=useState(false),[f,setF]=useState<any>(empty);const add=()=>{if(!f.name)return;p.setTeam([{...f,id:uid('TM')},...p.team]);setF(empty);setOpen(false)};return <><Title k="WORKFORCE" t="Team" d="Maintain staff details and assign them to projects." a={<button className="primary" onClick={()=>setOpen(!open)}><Plus/>Add member</button>}/>{open&&<FormCard><AutoFields f={f} setF={setF}/><button className="primary" onClick={add}>Save member</button></FormCard>}<div className="customerGrid">{p.team.map((m:TeamMember)=><article className="card customer"><b>{m.name.slice(0,2).toUpperCase()}</b><div><strong>{m.name}</strong><span>{m.role}</span><small>{m.phone} {m.email}</small></div><span className="pill">{m.status}</span></article>)}</div></>}
-function Reports(p:any){const revenue=p.invoices.reduce((s:number,i:Invoice)=>s+i.paid,0),expense=p.expenses.reduce((s:number,e:Expense)=>s+e.amount,0),stock=p.inventory.reduce((s:number,i:InventoryItem)=>s+i.quantity*i.cost,0),sales=p.invoices.reduce((s:number,i:Invoice)=>s+i.amount,0);const categories=Object.entries(p.expenses.reduce((a:any,e:Expense)=>(a[e.category]=(a[e.category]||0)+e.amount,a),{}));return <><Title k="BUSINESS INTELLIGENCE" t="Reports" d="Understand sales, cash collection, expenses and stock value."/><div className="stats">{[['Invoiced',money(sales,p.business.currency)],['Collected',money(revenue,p.business.currency)],['Expenses',money(expense,p.business.currency)],['Stock value',money(stock,p.business.currency)]].map(([a,b])=><article className="card stat"><div><span>{a}</span><strong>{b}</strong></div></article>)}</div><div className="grid2"><article className="card"><h2>Expense breakdown</h2>{categories.map(([k,v]:any)=><div className="barRow"><span>{k}</span><div><i style={{width:`${expense?Math.max(4,v/expense*100):0}%`}}/></div><b>{money(v,p.business.currency)}</b></div>)}</article><article className="card"><h2>Project profitability</h2>{p.projects.map((x:Project)=>{const projectExpense=p.expenses.filter((e:Expense)=>e.projectId===x.id).reduce((s:number,e:Expense)=>s+e.amount,0);return <div className="listRow"><div><b>{x.name}</b><small>{x.customer}</small></div><strong>{money(x.budget-projectExpense,p.business.currency)}</strong></div>})}</article></div></>}
-function SettingsPage({business,setBusiness}:any){const[f,setF]=useState(business);return <><Title k="CONFIGURATION" t="Business settings" d="Company identity and document defaults."/><FormCard><AutoFields f={f} setF={setF}/><button className="primary" onClick={()=>setBusiness(f)}>Save settings</button></FormCard></>}
-function SimpleRecords({title,rows,columns}:any){return <><Title k="RECORDS" t={title} d="Existing records from your Quotiq workspace."/><article className="card"><DataTable rows={rows} cols={columns}/></article></>}
-function AutoFields({f,setF}:{f:any;setF:(v:any)=>void}){return <div className="grid2">{Object.keys(f).map(k=><Field l={k.replace(/([A-Z])/g,' $1')} key={k}>{k==='status'?<select value={f[k]} onChange={e=>setF({...f,[k]:e.target.value})}><option>Active</option><option>Inactive</option></select>:<input type={typeof f[k]==='number'?'number':'text'} value={f[k]} onChange={e=>setF({...f,[k]:typeof f[k]==='number'?+e.target.value:e.target.value})}/>}</Field>)}</div>}
-function DataTable({rows,cols,currency='GHS'}:any){return <div className="table"><table><thead><tr>{cols.map((c:string)=><th>{c.replace(/([A-Z])/g,' $1')}</th>)}</tr></thead><tbody>{rows.map((r:any)=><tr key={r.id}>{cols.map((c:string)=><td>{['amount','cost','sellPrice','budget','spent','paid'].includes(c)?money(r[c],currency):String(r[c]??'')}</td>)}</tr>)}</tbody></table></div>}
-function Cards({rows,render}:any){return <div className="projectGrid">{rows.map(render)}</div>}
-function FormCard({children}:any){return <article className="card form">{children}</article>}
-function Field({l,children}:any){return <label>{l}{children}</label>}
-function Title({k,t,d,a}:any){return <div className="pageTitle"><div><small>{k}</small><h1>{t}</h1><p>{d}</p></div><div className="actions">{a}</div></div>}
+import { useEffect, useMemo, useRef, useState } from "react";
+import { NavLink, Route, Routes } from "react-router-dom";
+import {
+  LayoutDashboard,
+  FileText,
+  ReceiptText,
+  Users,
+  FolderKanban,
+  Package,
+  WalletCards,
+  BarChart3,
+  Settings,
+  Plus,
+  Menu,
+  X,
+  TrendingUp,
+  Clock3,
+  CheckCircle2,
+  Trash2,
+  Boxes,
+  UserCog,
+  BellRing,
+  ShieldCheck,
+  LogOut,
+  CalendarRange,
+  Inbox,
+  MessageSquareText,
+  ShoppingCart,
+  MapPinned,
+  RefreshCcw,
+} from "lucide-react";
+import type { Session } from "@supabase/supabase-js";
+import { getStored, setStored, uid } from "./lib/storage";
+import {
+  cloudConfigured,
+  loadWorkspace,
+  saveWorkspace,
+  signOut,
+} from "./lib/supabase";
+import type {
+  Business,
+  Customer,
+  Estimate,
+  Invoice,
+  Project,
+  InventoryItem,
+  Expense,
+  TeamMember,
+} from "./types";
+import BusinessBranding from "./components/BusinessBranding";
+const today = () => new Date().toISOString().slice(0, 10);
+const money = (v = 0, c = "GHS") =>
+  new Intl.NumberFormat("en-GH", { style: "currency", currency: c }).format(v);
+const businessSeed: Business = {
+  name: "Quotiq Demo Company",
+  email: "hello@example.com",
+  phone: "024 000 0000",
+  address: "Sunyani, Ghana",
+  taxId: "",
+  bank: "",
+  accountName: "",
+  accountNumber: "",
+  mobileMoney: "",
+  estimatePrefix: "EST",
+  invoicePrefix: "INV",
+  currency: "GHS",
+  terms: "Estimates are valid for 14 days.",
+};
+const customersSeed: Customer[] = [
+  {
+    id: "CUS-1001",
+    name: "Ama Serwaa",
+    phone: "0245550142",
+    email: "ama@example.com",
+    address: "Sunyani",
+  },
+];
+const estimatesSeed: Estimate[] = [];
+const invoicesSeed: Invoice[] = [];
+const projectsSeed: Project[] = [
+  {
+    id: "PRJ-1001",
+    customerId: "CUS-1001",
+    customer: "Ama Serwaa",
+    name: "8-camera CCTV installation",
+    status: "In Progress",
+    startDate: today(),
+    dueDate: today(),
+    budget: 6850,
+    spent: 3100,
+    assignee: "Michael",
+    notes: "Install and commission system.",
+  },
+];
+const inventorySeed: InventoryItem[] = [
+  {
+    id: "STK-1001",
+    name: "Hikvision Dome Camera",
+    sku: "CAM-HIK-2MP",
+    category: "CCTV",
+    quantity: 12,
+    reorderLevel: 5,
+    unit: "pcs",
+    cost: 350,
+    sellPrice: 480,
+  },
+];
+const expensesSeed: Expense[] = [
+  {
+    id: "EXP-1001",
+    date: today(),
+    category: "Materials",
+    description: "Camera accessories",
+    projectId: "PRJ-1001",
+    amount: 620,
+    paymentMethod: "Mobile Money",
+  },
+];
+const teamSeed: TeamMember[] = [
+  {
+    id: "TM-1001",
+    name: "Michael Adu Gyamfi",
+    role: "Owner",
+    phone: "",
+    email: "",
+    status: "Active",
+  },
+];
+const navGroups = [
+  {
+    label: "Workspace",
+    items: [["/", "Dashboard", LayoutDashboard]],
+  },
+  {
+    label: "Sales",
+    items: [
+      ["/leads", "Leads & bookings", Inbox],
+      ["/clienthub", "ClientHub", MessageSquareText],
+      ["/customers", "Customers", Users],
+      ["/estimates", "Estimates", FileText],
+      ["/invoices", "Invoices", ReceiptText],
+    ],
+  },
+  {
+    label: "Operations",
+    items: [
+      ["/projects", "Projects", FolderKanban],
+      ["/schedule", "Schedule", CalendarRange],
+      ["/field-tools", "Field tools & maps", MapPinned],
+      ["/service-plans", "Service plans", RefreshCcw],
+      ["/inventory", "Inventory", Package],
+      ["/purchasing", "Purchase orders", ShoppingCart],
+      ["/expenses", "Expenses", WalletCards],
+      ["/team", "Team", UserCog],
+    ],
+  },
+  {
+    label: "Insights",
+    items: [
+      ["/reports", "Reports", BarChart3],
+      ["/automation", "Automation", BellRing],
+    ],
+  },
+  {
+    label: "Account",
+    items: [
+      ["/security", "Security", ShieldCheck],
+      ["/settings", "Settings", Settings],
+    ],
+  },
+] as const;
+export default function App({ session }: { session: Session | null }) {
+  return <Main session={session} />;
+}
+function Main({ session }: { session: Session | null }) {
+  const [menu, setMenu] = useState(false);
+  const [business, setBusiness] = useStored("q-business", businessSeed);
+  const [customers, setCustomers] = useStored("q-customers", customersSeed);
+  const [estimates, setEstimates] = useStored("q-estimates", estimatesSeed);
+  const [invoices, setInvoices] = useStored("q-invoices", invoicesSeed);
+  const [projects, setProjects] = useStored("q-projects", projectsSeed);
+  const [inventory, setInventory] = useStored("q-inventory", inventorySeed);
+  const [expenses, setExpenses] = useStored("q-expenses", expensesSeed);
+  const [team, setTeam] = useStored("q-team", teamSeed);
+  const hydrated = useRef(false);
+  const [sync, setSync] = useState(session ? "syncing" : "local");
+  useEffect(() => {
+    if (!session || hydrated.current) return;
+    hydrated.current = true;
+    loadWorkspace(session.user.id)
+      .then((r) => {
+        if (r) {
+          setBusiness(r.business || businessSeed);
+          setCustomers(r.customers || []);
+          setEstimates(r.estimates || []);
+          setInvoices(r.invoices || []);
+          setProjects(r.projects || []);
+          setInventory(r.inventory || []);
+          setExpenses(r.expenses || []);
+          setTeam(r.team || []);
+        }
+        setSync("synced");
+      })
+      .catch(() => setSync("error"));
+  }, [session]);
+  useEffect(() => {
+    if (!session || !hydrated.current) return;
+    setSync("syncing");
+    const t = setTimeout(
+      () =>
+        saveWorkspace(session.user.id, {
+          business,
+          customers,
+          estimates,
+          invoices,
+          projects,
+          inventory,
+          expenses,
+          team,
+        })
+          .then(() => setSync("synced"))
+          .catch(() => setSync("error")),
+      700,
+    );
+    return () => clearTimeout(t);
+  }, [
+    session,
+    business,
+    customers,
+    estimates,
+    invoices,
+    projects,
+    inventory,
+    expenses,
+    team,
+  ]);
+  useEffect(() => {
+    if (!menu) return;
+    document.body.classList.add("sideMenuOpen");
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setMenu(false);
+    };
+    window.addEventListener("keydown", closeOnEscape);
+    return () => {
+      document.body.classList.remove("sideMenuOpen");
+      window.removeEventListener("keydown", closeOnEscape);
+    };
+  }, [menu]);
+  const closeMenu = () => setMenu(false);
+  const props = {
+    business,
+    customers,
+    estimates,
+    invoices,
+    projects,
+    inventory,
+    expenses,
+    team,
+    setBusiness,
+    setCustomers,
+    setEstimates,
+    setInvoices,
+    setProjects,
+    setInventory,
+    setExpenses,
+    setTeam,
+  };
+  return (
+    <div className="shell">
+      {menu && (
+        <button
+          type="button"
+          className="sideBackdrop"
+          aria-label="Close navigation"
+          onClick={closeMenu}
+        />
+      )}
+      <aside
+        id="workspaceNavigation"
+        className={menu ? "side open" : "side"}
+        aria-label="Quotiq workspace navigation"
+      >
+        <div className="brand">
+          <b>Q</b>
+          <span>Quotiq</span>
+          <button
+            type="button"
+            className="close"
+            aria-label="Close navigation"
+            onClick={closeMenu}
+          >
+            <X />
+          </button>
+        </div>
+        <div className="sideNavScroll">
+          {navGroups.map((group) => (
+            <section className="sideNavGroup" key={group.label}>
+              <span>{group.label}</span>
+              <nav aria-label={group.label}>
+                {group.items.map(([to, label, I]) => (
+                  <NavLink
+                    to={to}
+                    end={to === "/"}
+                    key={to}
+                    onClick={closeMenu}
+                  >
+                    <I size={18} />
+                    {label}
+                  </NavLink>
+                ))}
+              </nav>
+            </section>
+          ))}
+        </div>
+        <footer className="sideFooter">
+          <div className="saved">
+            <CheckCircle2 />
+            <div>
+              <strong>
+                {session
+                  ? sync === "synced"
+                    ? "Cloud synced"
+                    : sync === "syncing"
+                      ? "Syncing…"
+                      : "Sync error"
+                  : "Offline ready"}
+              </strong>
+              <small>
+                {session ? "Secure workspace backup" : "Saved on this device"}
+              </small>
+            </div>
+          </div>
+          {session && (
+            <button
+              type="button"
+              className="sideSignOut"
+              onClick={() => {
+                closeMenu();
+                void signOut();
+              }}
+            >
+              <LogOut />
+              <span>
+                <b>Sign out</b>
+                <small>Securely end this session</small>
+              </span>
+            </button>
+          )}
+        </footer>
+      </aside>
+      <main>
+        <header>
+          <button
+            type="button"
+            className="hamb"
+            aria-label="Open navigation"
+            aria-controls="workspaceNavigation"
+            aria-expanded={menu}
+            onClick={() => setMenu(true)}
+          >
+            <Menu />
+          </button>
+          <div>
+            <strong>{business.name}</strong>
+            <small>Contractor operations</small>
+          </div>
+          <div className="headerRight">
+            <span className="cloudBadge">
+              {cloudConfigured && session ? "Cloud" : "Local"}
+            </span>
+            {session && (
+              <button className="headerSignOut" onClick={() => signOut()}>
+                Sign out
+              </button>
+            )}
+          </div>
+        </header>
+        <section className="content">
+          <Routes>
+            <Route path="/" element={<Dashboard {...props} />} />
+            <Route path="/projects" element={<Projects {...props} />} />
+            <Route path="/inventory" element={<Inventory {...props} />} />
+            <Route path="/expenses" element={<Expenses {...props} />} />
+            <Route path="/team" element={<Team {...props} />} />
+            <Route path="/reports" element={<Reports {...props} />} />
+            <Route
+              path="/customers"
+              element={
+                <SimpleRecords
+                  title="Customers"
+                  rows={customers}
+                  columns={["name", "phone", "email", "address"]}
+                />
+              }
+            />
+            <Route
+              path="/estimates"
+              element={
+                <SimpleRecords
+                  title="Estimates"
+                  rows={estimates}
+                  columns={["id", "customer", "project", "amount", "status"]}
+                />
+              }
+            />
+            <Route
+              path="/invoices"
+              element={
+                <SimpleRecords
+                  title="Invoices"
+                  rows={invoices}
+                  columns={[
+                    "id",
+                    "customer",
+                    "project",
+                    "amount",
+                    "paid",
+                    "status",
+                  ]}
+                />
+              }
+            />
+            <Route
+              path="/settings"
+              element={
+                <SettingsPage business={business} setBusiness={setBusiness} />
+              }
+            />
+          </Routes>
+        </section>
+      </main>
+    </div>
+  );
+}
+function useStored<T>(key: string, seed: T): [T, (v: T) => void] {
+  const [v, setV] = useState<T>(() => getStored(key, seed));
+  return [
+    v,
+    (n: T) => {
+      setV(n);
+      setStored(key, n);
+    },
+  ];
+}
+function Dashboard(p: any) {
+  const revenue = p.invoices.reduce((s: number, i: Invoice) => s + i.paid, 0),
+    outstanding = p.invoices.reduce(
+      (s: number, i: Invoice) => s + i.amount - i.paid,
+      0,
+    ),
+    expense = p.expenses.reduce((s: number, e: Expense) => s + e.amount, 0),
+    profit = revenue - expense,
+    low = p.inventory.filter(
+      (i: InventoryItem) => i.quantity <= i.reorderLevel,
+    ).length;
+  return (
+    <>
+      <Title
+        k="OPERATIONS OVERVIEW"
+        t="Run every job from one place"
+        d="Projects, costs, stock, team and cash flow are now connected."
+      />
+      <div className="stats">
+        {[
+          ["Collected", money(revenue, p.business.currency), TrendingUp],
+          ["Outstanding", money(outstanding, p.business.currency), Clock3],
+          ["Net cash", money(profit, p.business.currency), CheckCircle2],
+          ["Low stock", String(low), Boxes],
+        ].map(([a, b, I]: any) => (
+          <article className="card stat" key={a}>
+            <div>
+              <span>{a}</span>
+              <strong>{b}</strong>
+            </div>
+            <I />
+          </article>
+        ))}
+      </div>
+      <div className="grid2">
+        <article className="card">
+          <h2>Active projects</h2>
+          {p.projects
+            .filter((x: Project) => x.status !== "Completed")
+            .slice(0, 5)
+            .map((x: Project) => (
+              <div className="listRow" key={x.id}>
+                <div>
+                  <b>{x.name}</b>
+                  <small>
+                    {x.customer} · {x.assignee}
+                  </small>
+                </div>
+                <span className="pill">{x.status}</span>
+              </div>
+            ))}
+        </article>
+        <article className="card">
+          <h2>Stock alerts</h2>
+          {p.inventory
+            .filter((x: InventoryItem) => x.quantity <= x.reorderLevel)
+            .map((x: InventoryItem) => (
+              <div className="listRow" key={x.id}>
+                <div>
+                  <b>{x.name}</b>
+                  <small>{x.sku}</small>
+                </div>
+                <strong>
+                  {x.quantity} {x.unit}
+                </strong>
+              </div>
+            ))}
+          {low === 0 && <p>No stock alerts.</p>}
+        </article>
+      </div>
+    </>
+  );
+}
+function Projects(p: any) {
+  const empty = {
+    customerId: p.customers[0]?.id || "",
+    name: "",
+    status: "Planned",
+    startDate: today(),
+    dueDate: today(),
+    budget: 0,
+    spent: 0,
+    assignee: p.team[0]?.name || "",
+    notes: "",
+  };
+  const [open, setOpen] = useState(false),
+    [f, setF] = useState<any>(empty);
+  const add = () => {
+    const c = p.customers.find((x: Customer) => x.id === f.customerId);
+    if (!c || !f.name) return;
+    p.setProjects([{ ...f, id: uid("PRJ"), customer: c.name }, ...p.projects]);
+    setOpen(false);
+    setF(empty);
+  };
+  return (
+    <>
+      <Title
+        k="PROJECT MANAGEMENT"
+        t="Projects"
+        d="Track job status, budget, cost and assigned staff."
+        a={
+          <button className="primary" onClick={() => setOpen(!open)}>
+            <Plus />
+            New project
+          </button>
+        }
+      />
+      {open && (
+        <FormCard>
+          <div className="grid2">
+            <Field l="Customer">
+              <select
+                value={f.customerId}
+                onChange={(e) => setF({ ...f, customerId: e.target.value })}
+              >
+                {p.customers.map((c: Customer) => (
+                  <option value={c.id}>{c.name}</option>
+                ))}
+              </select>
+            </Field>
+            <Field l="Project name">
+              <input
+                value={f.name}
+                onChange={(e) => setF({ ...f, name: e.target.value })}
+              />
+            </Field>
+            <Field l="Status">
+              <select
+                value={f.status}
+                onChange={(e) => setF({ ...f, status: e.target.value })}
+              >
+                {["Planned", "In Progress", "Completed", "On Hold"].map((x) => (
+                  <option>{x}</option>
+                ))}
+              </select>
+            </Field>
+            <Field l="Assignee">
+              <select
+                value={f.assignee}
+                onChange={(e) => setF({ ...f, assignee: e.target.value })}
+              >
+                {p.team.map((m: TeamMember) => (
+                  <option>{m.name}</option>
+                ))}
+              </select>
+            </Field>
+            <Field l="Start date">
+              <input
+                type="date"
+                value={f.startDate}
+                onChange={(e) => setF({ ...f, startDate: e.target.value })}
+              />
+            </Field>
+            <Field l="Due date">
+              <input
+                type="date"
+                value={f.dueDate}
+                onChange={(e) => setF({ ...f, dueDate: e.target.value })}
+              />
+            </Field>
+            <Field l="Budget">
+              <input
+                type="number"
+                value={f.budget}
+                onChange={(e) => setF({ ...f, budget: +e.target.value })}
+              />
+            </Field>
+            <Field l="Spent">
+              <input
+                type="number"
+                value={f.spent}
+                onChange={(e) => setF({ ...f, spent: +e.target.value })}
+              />
+            </Field>
+          </div>
+          <button className="primary" onClick={add}>
+            Save project
+          </button>
+        </FormCard>
+      )}
+      <Cards
+        rows={p.projects}
+        render={(x: Project) => (
+          <article className="card project">
+            <div className="titleRow">
+              <div>
+                <small>{x.id}</small>
+                <h3>{x.name}</h3>
+                <span>{x.customer}</span>
+              </div>
+              <span className="pill">{x.status}</span>
+            </div>
+            <p>
+              {x.startDate} → {x.dueDate}
+            </p>
+            <div className="progress">
+              <i
+                style={{
+                  width: `${Math.min(100, x.budget ? (x.spent / x.budget) * 100 : 0)}%`,
+                }}
+              />
+            </div>
+            <div className="projectFoot">
+              <span>
+                Spent {money(x.spent, p.business.currency)} /{" "}
+                {money(x.budget, p.business.currency)}
+              </span>
+              <b>{x.assignee}</b>
+            </div>
+          </article>
+        )}
+      />
+    </>
+  );
+}
+function Inventory(p: any) {
+  const empty = {
+    name: "",
+    sku: "",
+    category: "",
+    quantity: 0,
+    reorderLevel: 5,
+    unit: "pcs",
+    cost: 0,
+    sellPrice: 0,
+  };
+  const [open, setOpen] = useState(false),
+    [f, setF] = useState<any>(empty);
+  const add = () => {
+    if (!f.name) return;
+    p.setInventory([{ ...f, id: uid("STK") }, ...p.inventory]);
+    setF(empty);
+    setOpen(false);
+  };
+  return (
+    <>
+      <Title
+        k="STOCK CONTROL"
+        t="Inventory"
+        d="Manage materials, costs, selling prices and reorder alerts."
+        a={
+          <button className="primary" onClick={() => setOpen(!open)}>
+            <Plus />
+            Add item
+          </button>
+        }
+      />
+      {open && (
+        <FormCard>
+          <AutoFields f={f} setF={setF} />
+          <button className="primary" onClick={add}>
+            Save item
+          </button>
+        </FormCard>
+      )}
+      <article className="card">
+        <DataTable
+          rows={p.inventory}
+          cols={[
+            "name",
+            "sku",
+            "category",
+            "quantity",
+            "reorderLevel",
+            "unit",
+            "cost",
+            "sellPrice",
+          ]}
+          currency={p.business.currency}
+        />
+      </article>
+    </>
+  );
+}
+function Expenses(p: any) {
+  const empty = {
+    date: today(),
+    category: "Materials",
+    description: "",
+    projectId: "",
+    amount: 0,
+    paymentMethod: "Mobile Money",
+  };
+  const [open, setOpen] = useState(false),
+    [f, setF] = useState<any>(empty);
+  const add = () => {
+    if (!f.description || f.amount <= 0) return;
+    p.setExpenses([{ ...f, id: uid("EXP") }, ...p.expenses]);
+    setF(empty);
+    setOpen(false);
+  };
+  return (
+    <>
+      <Title
+        k="COST TRACKING"
+        t="Expenses"
+        d="Record project and overhead spending for accurate profit reporting."
+        a={
+          <button className="primary" onClick={() => setOpen(!open)}>
+            <Plus />
+            Record expense
+          </button>
+        }
+      />
+      {open && (
+        <FormCard>
+          <div className="grid2">
+            <Field l="Date">
+              <input
+                type="date"
+                value={f.date}
+                onChange={(e) => setF({ ...f, date: e.target.value })}
+              />
+            </Field>
+            <Field l="Category">
+              <select
+                value={f.category}
+                onChange={(e) => setF({ ...f, category: e.target.value })}
+              >
+                {[
+                  "Materials",
+                  "Transport",
+                  "Labour",
+                  "Fuel",
+                  "Tools",
+                  "Meals",
+                  "Other",
+                ].map((x) => (
+                  <option>{x}</option>
+                ))}
+              </select>
+            </Field>
+            <Field l="Description">
+              <input
+                value={f.description}
+                onChange={(e) => setF({ ...f, description: e.target.value })}
+              />
+            </Field>
+            <Field l="Project">
+              <select
+                value={f.projectId}
+                onChange={(e) => setF({ ...f, projectId: e.target.value })}
+              >
+                <option value="">General overhead</option>
+                {p.projects.map((x: Project) => (
+                  <option value={x.id}>{x.name}</option>
+                ))}
+              </select>
+            </Field>
+            <Field l="Amount">
+              <input
+                type="number"
+                value={f.amount}
+                onChange={(e) => setF({ ...f, amount: +e.target.value })}
+              />
+            </Field>
+            <Field l="Payment method">
+              <input
+                value={f.paymentMethod}
+                onChange={(e) => setF({ ...f, paymentMethod: e.target.value })}
+              />
+            </Field>
+          </div>
+          <button className="primary" onClick={add}>
+            Save expense
+          </button>
+        </FormCard>
+      )}
+      <article className="card">
+        <DataTable
+          rows={p.expenses}
+          cols={[
+            "date",
+            "category",
+            "description",
+            "projectId",
+            "amount",
+            "paymentMethod",
+          ]}
+          currency={p.business.currency}
+        />
+      </article>
+    </>
+  );
+}
+function Team(p: any) {
+  const empty = {
+    name: "",
+    role: "Technician",
+    phone: "",
+    email: "",
+    status: "Active",
+  };
+  const [open, setOpen] = useState(false),
+    [f, setF] = useState<any>(empty);
+  const add = () => {
+    if (!f.name) return;
+    p.setTeam([{ ...f, id: uid("TM") }, ...p.team]);
+    setF(empty);
+    setOpen(false);
+  };
+  return (
+    <>
+      <Title
+        k="WORKFORCE"
+        t="Team"
+        d="Maintain staff details and assign them to projects."
+        a={
+          <button className="primary" onClick={() => setOpen(!open)}>
+            <Plus />
+            Add member
+          </button>
+        }
+      />
+      {open && (
+        <FormCard>
+          <AutoFields f={f} setF={setF} />
+          <button className="primary" onClick={add}>
+            Save member
+          </button>
+        </FormCard>
+      )}
+      <div className="customerGrid">
+        {p.team.map((m: TeamMember) => (
+          <article className="card customer">
+            <b>{m.name.slice(0, 2).toUpperCase()}</b>
+            <div>
+              <strong>{m.name}</strong>
+              <span>{m.role}</span>
+              <small>
+                {m.phone} {m.email}
+              </small>
+            </div>
+            <span className="pill">{m.status}</span>
+          </article>
+        ))}
+      </div>
+    </>
+  );
+}
+function Reports(p: any) {
+  const revenue = p.invoices.reduce((s: number, i: Invoice) => s + i.paid, 0),
+    expense = p.expenses.reduce((s: number, e: Expense) => s + e.amount, 0),
+    stock = p.inventory.reduce(
+      (s: number, i: InventoryItem) => s + i.quantity * i.cost,
+      0,
+    ),
+    sales = p.invoices.reduce((s: number, i: Invoice) => s + i.amount, 0);
+  const categories = Object.entries(
+    p.expenses.reduce(
+      (a: any, e: Expense) => (
+        (a[e.category] = (a[e.category] || 0) + e.amount),
+        a
+      ),
+      {},
+    ),
+  );
+  return (
+    <>
+      <Title
+        k="BUSINESS INTELLIGENCE"
+        t="Reports"
+        d="Understand sales, cash collection, expenses and stock value."
+      />
+      <div className="stats">
+        {[
+          ["Invoiced", money(sales, p.business.currency)],
+          ["Collected", money(revenue, p.business.currency)],
+          ["Expenses", money(expense, p.business.currency)],
+          ["Stock value", money(stock, p.business.currency)],
+        ].map(([a, b]) => (
+          <article className="card stat">
+            <div>
+              <span>{a}</span>
+              <strong>{b}</strong>
+            </div>
+          </article>
+        ))}
+      </div>
+      <div className="grid2">
+        <article className="card">
+          <h2>Expense breakdown</h2>
+          {categories.map(([k, v]: any) => (
+            <div className="barRow">
+              <span>{k}</span>
+              <div>
+                <i
+                  style={{
+                    width: `${expense ? Math.max(4, (v / expense) * 100) : 0}%`,
+                  }}
+                />
+              </div>
+              <b>{money(v, p.business.currency)}</b>
+            </div>
+          ))}
+        </article>
+        <article className="card">
+          <h2>Project profitability</h2>
+          {p.projects.map((x: Project) => {
+            const projectExpense = p.expenses
+              .filter((e: Expense) => e.projectId === x.id)
+              .reduce((s: number, e: Expense) => s + e.amount, 0);
+            return (
+              <div className="listRow">
+                <div>
+                  <b>{x.name}</b>
+                  <small>{x.customer}</small>
+                </div>
+                <strong>
+                  {money(x.budget - projectExpense, p.business.currency)}
+                </strong>
+              </div>
+            );
+          })}
+        </article>
+      </div>
+    </>
+  );
+}
+function SettingsPage({
+  business,
+  setBusiness,
+}: {
+  business: Business;
+  setBusiness: (business: Business) => void;
+}) {
+  return (
+    <>
+      <Title
+        k="BRAND & DOCUMENTS"
+        t="Business settings"
+        d="Manage the identity clients see across every Quotiq document."
+      />
+      <BusinessBranding business={business} setBusiness={setBusiness} />
+    </>
+  );
+}
+function SimpleRecords({ title, rows, columns }: any) {
+  return (
+    <>
+      <Title
+        k="RECORDS"
+        t={title}
+        d="Existing records from your Quotiq workspace."
+      />
+      <article className="card">
+        <DataTable rows={rows} cols={columns} />
+      </article>
+    </>
+  );
+}
+function AutoFields({ f, setF }: { f: any; setF: (v: any) => void }) {
+  return (
+    <div className="grid2">
+      {Object.keys(f).map((k) => (
+        <Field l={k.replace(/([A-Z])/g, " $1")} key={k}>
+          {k === "status" ? (
+            <select
+              value={f[k]}
+              onChange={(e) => setF({ ...f, [k]: e.target.value })}
+            >
+              <option>Active</option>
+              <option>Inactive</option>
+            </select>
+          ) : (
+            <input
+              type={typeof f[k] === "number" ? "number" : "text"}
+              value={f[k]}
+              onChange={(e) =>
+                setF({
+                  ...f,
+                  [k]:
+                    typeof f[k] === "number" ? +e.target.value : e.target.value,
+                })
+              }
+            />
+          )}
+        </Field>
+      ))}
+    </div>
+  );
+}
+function DataTable({ rows, cols, currency = "GHS" }: any) {
+  return (
+    <div className="table">
+      <table>
+        <thead>
+          <tr>
+            {cols.map((c: string) => (
+              <th>{c.replace(/([A-Z])/g, " $1")}</th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((r: any) => (
+            <tr key={r.id}>
+              {cols.map((c: string) => (
+                <td>
+                  {[
+                    "amount",
+                    "cost",
+                    "sellPrice",
+                    "budget",
+                    "spent",
+                    "paid",
+                  ].includes(c)
+                    ? money(r[c], currency)
+                    : String(r[c] ?? "")}
+                </td>
+              ))}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+function Cards({ rows, render }: any) {
+  return <div className="projectGrid">{rows.map(render)}</div>;
+}
+function FormCard({ children }: any) {
+  return <article className="card form">{children}</article>;
+}
+function Field({ l, children }: any) {
+  return (
+    <label>
+      {l}
+      {children}
+    </label>
+  );
+}
+function Title({ k, t, d, a }: any) {
+  return (
+    <div className="pageTitle">
+      <div>
+        <small>{k}</small>
+        <h1>{t}</h1>
+        <p>{d}</p>
+      </div>
+      <div className="actions">{a}</div>
+    </div>
+  );
+}

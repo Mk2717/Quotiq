@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { FilePlus2, ReceiptText, UserPlus, FolderPlus, CalendarDays, ArrowUpRight, CircleDollarSign, Activity, PackageSearch, BellRing } from 'lucide-react';
+import { FilePlus2, ReceiptText, UserPlus, FolderPlus, CalendarDays, CalendarRange, ArrowUpRight, CircleDollarSign, Activity, PackageSearch, BellRing, Inbox } from 'lucide-react';
+import { useLocation } from 'react-router-dom';
 
 type AnyRecord = Record<string, string | number | boolean | null | undefined>;
 
@@ -21,27 +22,26 @@ const go = (path: string) => {
 };
 
 export default function DashboardExperience() {
+  const location = useLocation();
   const [target, setTarget] = useState<Element | null>(null);
-  const [isDashboard, setIsDashboard] = useState(() => !window.location.hash || window.location.hash === '#/' || window.location.hash === '#');
   const [tick, setTick] = useState(0);
+  const isDashboard = location.pathname === '/';
 
   useEffect(() => {
     const sync = () => {
-      setIsDashboard(!window.location.hash || window.location.hash === '#/' || window.location.hash === '#');
       setTarget(document.querySelector('.content'));
       setTick(value => value + 1);
     };
     sync();
-    const observer = new MutationObserver(sync);
-    observer.observe(document.body, { childList: true, subtree: true });
-    window.addEventListener('hashchange', sync);
     window.addEventListener('storage', sync);
+    window.addEventListener('quotiq:storage', sync);
     return () => {
-      observer.disconnect();
-      window.removeEventListener('hashchange', sync);
       window.removeEventListener('storage', sync);
+      window.removeEventListener('quotiq:storage', sync);
     };
   }, []);
+
+  useEffect(()=>{if(!target)return;target.classList.toggle('dashboardEnhanced',isDashboard);return()=>target.classList.remove('dashboardEnhanced')},[target,isDashboard]);
 
   const data = useMemo(() => {
     const business = read<AnyRecord>('q-business', { name: 'Quotiq Demo Company', currency: 'GHS' });
@@ -94,7 +94,9 @@ export default function DashboardExperience() {
           <button onClick={() => go('/estimates/new')}><i><FilePlus2/></i><b>New estimate</b><span>Create a professional quote</span></button>
           <button onClick={() => go('/invoices/new')}><i><ReceiptText/></i><b>New invoice</b><span>Bill a customer quickly</span></button>
           <button onClick={() => go('/customers/new')}><i><UserPlus/></i><b>Add customer</b><span>Save a new client record</span></button>
+          <button onClick={() => go('/leads')}><i><Inbox/></i><b>Leads & bookings</b><span>Follow requests and convert jobs</span></button>
           <button onClick={() => go('/projects')}><i><FolderPlus/></i><b>New project</b><span>Plan and assign a job</span></button>
+          <button onClick={() => go('/schedule')}><i><CalendarRange/></i><b>Schedule & dispatch</b><span>Assign crews and time slots</span></button>
           <button onClick={() => go('/automation')}><i><BellRing/></i><b>Business alerts</b><span>Review reminders and deadlines</span></button>
         </div>
       </section>

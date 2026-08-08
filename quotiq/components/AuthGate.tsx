@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import type { Session } from '@supabase/supabase-js';
 import { Building2, Check, ChevronLeft, ChevronRight, FileText, LockKeyhole, Mail, MapPin, ShieldCheck, Sparkles, WalletCards } from 'lucide-react';
-import { cloudConfigured, getSession, signIn, signUp, supabase } from '../lib/supabase';
+import { cloudConfigured, getSession, getSocialProviders, resendSignupConfirmation, resetPassword, signIn, signInWithProvider, signUp, supabase, updatePassword, type SocialProvider } from '../lib/supabase';
 
 type SetupData = {
   ownerName: string;
@@ -23,43 +23,137 @@ const setupSeed: SetupData = {
   phone: '', email: '', address: 'Sunyani, Ghana', estimatePrefix: 'EST', invoicePrefix: 'INV', taxRate: '0', paymentMethod: 'Mobile Money',
 };
 
+const getAuthCallbackError=()=>{
+  if(typeof window==='undefined')return '';
+  const hashParams=new URLSearchParams(window.location.hash.replace(/^#/,''));
+  const queryParams=new URLSearchParams(window.location.search);
+  return (hashParams.get('error_description')||queryParams.get('error_description')||'').replaceAll('+',' ');
+};
+
 export function AuthGate({ children }: { children: (session: Session | null) => ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [ready, setReady] = useState(!cloudConfigured);
-  const [mode, setMode] = useState<'signin' | 'signup'>('signin');
+  const [mode, setMode] = useState<'signin' | 'signup' | 'recovery'>('signin');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
-  const [error, setError] = useState('');
+  const [feedback, setFeedback] = useState(getAuthCallbackError);
+  const [feedbackTone, setFeedbackTone] = useState<'error' | 'success' | 'info'>('error');
   const [working, setWorking] = useState(false);
+  const [social, setSocial] = useState<Record<SocialProvider,boolean>>({google:false,azure:false,apple:false});
+  const [signupComplete, setSignupComplete] = useState(false);
   const [setupDone, setSetupDone] = useState(() => localStorage.getItem('q-onboarding-complete') === 'true');
   const [showSetup, setShowSetup] = useState(false);
+  const enabledProviders = useMemo(() => (Object.keys(social) as SocialProvider[]).filter(provider => social[provider]), [social]);
 
   useEffect(() => {
     if (!supabase) return;
-    getSession().then(setSession).catch(e => setError(e.message)).finally(() => setReady(true));
-    const { data } = supabase.auth.onAuthStateChange((_event, next) => setSession(next));
+    const hashParams = new URLSearchParams(window.location.hash.replace(/^#/, ''));
+    const queryParams = new URLSearchParams(window.location.search);
+    const callbackError = hashParams.get('error_description') || queryParams.get('error_description');
+    getSession().then(next => {
+      setSession(next);
+      if (next && !callbackError && (hashParams.has('access_token') || queryParams.has('code'))) {
+        setFeedback('Your email is confirmed. Welcome to Quotiq.');
+        setFeedbackTone('success');
+      }
+    }).catch(e => {
+      setFeedback(e instanceof Error ? e.message : 'Unable to prepare sign in.');
+      setFeedbackTone('error');
+    }).finally(() => setReady(true));
+    const { data } = supabase.auth.onAuthStateChange((event, next) => {
+      setSession(next);
+      if(event === 'PASSWORD_RECOVERY') {
+        setMode('recovery');
+        setSignupComplete(false);
+        setFeedback('Choose a new password to finish recovering your account.');
+        setFeedbackTone('info');
+      }
+    });
     return () => data.subscription.unsubscribe();
   }, []);
 
-  useEffect(() => {
-    if (ready && !setupDone && (!cloudConfigured || session)) setShowSetup(true);
-  }, [ready, session, setupDone]);
+  useEffect(()=>{if(!cloudConfigured)return;getSocialProviders().then(setSocial).catch(()=>setSocial({google:false,azure:false,apple:false}));},[]);
 
   if (!ready) return <LoadingScreen />;
-  if (showSetup) return <Onboarding onComplete={() => { setSetupDone(true); setShowSetup(false); window.location.reload(); }} />;
+  if (showSetup || (!setupDone && (!cloudConfigured || session))) return <Onboarding onComplete={() => { setSetupDone(true); setShowSetup(false); window.location.reload(); }} />;
   if (!cloudConfigured || session) return <>{children(session)}</>;
 
   const submit = async () => {
-    setError('');
-    if (!email || password.length < 6) return setError('Enter a valid email and a password of at least 6 characters.');
+    setFeedback('');
+    if (mode !== 'recovery' && (!email.trim() || !email.includes('@'))) {
+      setFeedbackTone('error');
+      return setFeedback('Enter a valid email address.');
+    }
+    if (password.length < 8) {
+      setFeedbackTone('error');
+      return setFeedback('Use a password with at least 8 characters.');
+    }
     setWorking(true);
     try {
-      if (mode === 'signin') await signIn(email, password); else await signUp(email, password);
-      if (mode === 'signup') setError('Account created. Check your email to confirm your account, then sign in.');
-    } catch (e) { setError(e instanceof Error ? e.message : 'Authentication failed.'); }
+      if (mode === 'signin') {
+        await signIn(email.trim(), password);
+      } else if(mode === 'signup') {
+        const activeSession = await signUp(email.trim(), password);
+        if (activeSession) setSession(activeSession);
+        else {
+          setSignupComplete(true);
+          setPassword('');
+          setFeedback('Confirmation email sent.');
+          setFeedbackTone('success');
+        }
+      } else {
+        await updatePassword(password);
+        setPassword('');
+        setMode('signin');
+        setFeedback('Password updated. You can continue securely.');
+        setFeedbackTone('success');
+      }
+    } catch (e) {
+      setFeedback(e instanceof Error ? e.message : 'Authentication failed.');
+      setFeedbackTone('error');
+    }
     finally { setWorking(false); }
   };
+  const oauth = async (provider:SocialProvider) => {
+    setFeedback('');
+    setWorking(true);
+    try { await signInWithProvider(provider); }
+    catch(e) {
+      setFeedback(e instanceof Error ? e.message : 'This sign-in option is not available right now.');
+      setFeedbackTone('error');
+      setWorking(false);
+    }
+  };
+  const forgot = async () => {
+    if(!email.trim()) {
+      setFeedbackTone('error');
+      return setFeedback('Enter your email address first.');
+    }
+    setWorking(true);
+    try {
+      await resetPassword(email.trim());
+      setFeedback('If an account exists for that email, a secure reset link is on its way.');
+      setFeedbackTone('success');
+    } catch(e) {
+      setFeedback(e instanceof Error ? e.message : 'Unable to send a reset email.');
+      setFeedbackTone('error');
+    } finally { setWorking(false); }
+  };
+  const resend = async () => {
+    setWorking(true);
+    try {
+      await resendSignupConfirmation(email.trim());
+      setFeedback('A fresh confirmation email has been sent.');
+      setFeedbackTone('success');
+    } catch(e) {
+      setFeedback(e instanceof Error ? e.message : 'Unable to resend the confirmation email.');
+      setFeedbackTone('error');
+    } finally { setWorking(false); }
+  };
+  const providerLabel=(provider:SocialProvider)=>provider==='azure'?'Microsoft':provider[0].toUpperCase()+provider.slice(1);
+  const providerMark=(provider:SocialProvider)=>provider==='google'?'G':provider==='azure'?'M':'●';
+  const heading = signupComplete ? 'Check your email' : mode === 'signin' ? 'Sign in to Quotiq' : mode === 'signup' ? 'Create your account' : 'Choose a new password';
 
   return <div className="authShell">
     <section className="authStory">
@@ -69,14 +163,25 @@ export function AuthGate({ children }: { children: (session: Session | null) => 
     </section>
     <section className="authFormPanel"><div className="authCard authCardV2">
       <div className="authMobileBrand"><img src="/quotiq-mark.svg"/><strong>Quotiq</strong></div>
-      <span className="authEyebrow">{mode === 'signin' ? 'WELCOME BACK' : 'START YOUR WORKSPACE'}</span>
-      <h1>{mode === 'signin' ? 'Sign in to Quotiq' : 'Create your account'}</h1>
-      <p>{mode === 'signin' ? 'Continue managing your estimates, invoices and projects.' : 'Set up a professional contractor workspace in minutes.'}</p>
-      <label>Email address<div className="inputWithIcon"><Mail/><input type="email" placeholder="you@company.com" value={email} onChange={e => setEmail(e.target.value)} /></div></label>
-      <label>Password<div className="inputWithIcon"><LockKeyhole/><input type={showPassword ? 'text' : 'password'} placeholder="At least 6 characters" value={password} onChange={e => setPassword(e.target.value)} /><button type="button" className="showPassword" onClick={() => setShowPassword(!showPassword)}>{showPassword ? 'Hide' : 'Show'}</button></div></label>
-      {error && <div className="authError">{error}</div>}
-      <button className="primary authButton" onClick={submit} disabled={working}>{working ? 'Please wait…' : mode === 'signin' ? 'Sign in securely' : 'Create my workspace'}</button>
-      <div className="authSwitch"><span>{mode === 'signin' ? 'New to Quotiq?' : 'Already registered?'}</span><button className="linkButton" onClick={() => { setMode(mode === 'signin' ? 'signup' : 'signin'); setError(''); }}>{mode === 'signin' ? 'Create an account' : 'Sign in'}</button></div>
+      <span className="authEyebrow">{signupComplete ? 'ONE LAST STEP' : mode === 'signin' ? 'WELCOME BACK' : mode === 'signup' ? 'START YOUR WORKSPACE' : 'SECURE RECOVERY'}</span>
+      <h1>{heading}</h1>
+      <p>{signupComplete ? 'Confirm your address to protect your business workspace.' : mode === 'signin' ? 'Continue managing your estimates, invoices and projects.' : mode === 'signup' ? 'Set up a professional contractor workspace in minutes.' : 'Enter a strong password for your Quotiq account.'}</p>
+      {signupComplete ? <div className="authConfirmation">
+        <i><Mail/></i><h2>Email sent to</h2><strong>{email}</strong><p>Open the message from Quotiq and tap the confirmation link. It will return you to the live Quotiq app—not localhost.</p>
+        {feedback&&<div className={`authFeedback ${feedbackTone}`}>{feedback}</div>}
+        <button className="primary authButton" disabled={working} onClick={()=>{setSignupComplete(false);setMode('signin');setFeedback('Your account is ready after confirmation. Sign in below.');setFeedbackTone('info')}}>I’ve confirmed — sign in</button>
+        <button className="authSecondary" disabled={working} onClick={resend}>{working?'Sending…':'Resend confirmation email'}</button>
+        <button className="linkButton authChangeEmail" onClick={()=>{setSignupComplete(false);setFeedback('');}}>Use another email</button>
+      </div> : <>
+        {mode !== 'recovery' && enabledProviders.length>0 && <><div className={`socialAuth count${enabledProviders.length}`}>{enabledProviders.map(provider=><button key={provider} onClick={()=>oauth(provider)} disabled={working}><b className={provider==='azure'?'ms':provider==='apple'?'apple':''}>{providerMark(provider)}</b><span>Continue with {providerLabel(provider)}</span></button>)}</div><div className="authDivider"><span>or use email</span></div></>}
+        <label>Email address<div className="inputWithIcon"><Mail/><input type="email" autoComplete="email" inputMode="email" placeholder="you@company.com" value={email} onChange={e => setEmail(e.target.value)} /></div></label>
+        <label>Password<div className="inputWithIcon"><LockKeyhole/><input type={showPassword ? 'text' : 'password'} autoComplete={mode==='signup'?'new-password':'current-password'} placeholder="At least 8 characters" value={password} onChange={e => setPassword(e.target.value)} onKeyDown={e=>e.key==='Enter'&&submit()} /><button type="button" className="showPassword" onClick={() => setShowPassword(!showPassword)}>{showPassword ? 'Hide' : 'Show'}</button></div></label>
+        {mode === 'signup'&&<small className="authPasswordHint"><ShieldCheck/>Use 8+ characters and a password you do not use elsewhere.</small>}
+        {mode === 'signin' && <button type="button" className="forgotPassword" onClick={forgot}>Forgot password?</button>}
+        {feedback && <div className={`authFeedback ${feedbackTone}`}>{feedback}</div>}
+        <button className="primary authButton" onClick={submit} disabled={working}>{working ? 'Please wait…' : mode === 'signin' ? 'Sign in securely' : mode === 'signup' ? 'Create my workspace' : 'Save new password'}</button>
+        {mode !== 'recovery' && <div className="authSwitch"><span>{mode === 'signin' ? 'New to Quotiq?' : 'Already registered?'}</span><button className="linkButton" onClick={() => { setMode(mode === 'signin' ? 'signup' : 'signin'); setFeedback(''); setSignupComplete(false); }}>{mode === 'signin' ? 'Create an account' : 'Sign in'}</button></div>}
+      </>}
     </div></section>
   </div>;
 }
@@ -95,7 +200,7 @@ function Onboarding({onComplete}:{onComplete:()=>void}){
   const update=(key:keyof SetupData,value:string)=>setData(v=>({...v,[key]:value}));
   const finish=()=>{
     const existing=JSON.parse(localStorage.getItem('q-business')||'{}');
-    localStorage.setItem('q-business',JSON.stringify({...existing,name:data.companyName||'My Business',email:data.email,phone:data.phone,address:data.address,currency:data.currency,estimatePrefix:data.estimatePrefix||'EST',invoicePrefix:data.invoicePrefix||'INV',mobileMoney:data.paymentMethod==='Mobile Money'?data.phone:existing.mobileMoney||'',taxRate:Number(data.taxRate)||0,ownerName:data.ownerName,businessType:data.businessType,country:data.country,paymentMethod:data.paymentMethod}));
+    localStorage.setItem('q-business',JSON.stringify({...existing,name:data.companyName||'My Business',email:data.email,phone:data.phone,address:data.address,currency:data.currency,estimatePrefix:data.estimatePrefix||'EST',invoicePrefix:data.invoicePrefix||'INV',mobileMoney:data.paymentMethod==='Mobile Money'?data.phone:existing.mobileMoney||'',taxRate:Number(data.taxRate)||0,ownerName:data.ownerName,authorizedName:data.ownerName,authorizedTitle:'Owner / Contractor',businessType:data.businessType,country:data.country,paymentMethod:data.paymentMethod}));
     localStorage.setItem('q-onboarding-complete','true'); onComplete();
   };
   const Icon=steps[step].icon;

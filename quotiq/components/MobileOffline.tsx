@@ -11,6 +11,11 @@ type InstallPromptEvent = Event & {
 const BACKUP_KEYS = [
   'q-business', 'q-customers', 'q-estimates', 'q-invoices', 'q-projects',
   'q-inventory', 'q-expenses', 'q-team', 'q-automation-settings', 'q-reminder-log',
+  'q-device-security', 'q-security-events', 'q-suppliers', 'q-stock-movements',
+  'q-workforce-time-entries', 'q-client-communications', 'q-client-message-templates',
+  'q-purchase-orders',
+  'q-site-measurements', 'q-route-plans',
+  'q-service-assets', 'q-service-agreements', 'q-service-visits',
 ];
 
 export default function MobileOffline() {
@@ -19,6 +24,7 @@ export default function MobileOffline() {
   const [showInstall, setShowInstall] = useState(false);
   const [panel, setPanel] = useState(false);
   const [message, setMessage] = useState('');
+  const [syncStatus,setSyncStatus]=useState(()=>typeof localStorage==='undefined'?'offline':localStorage.getItem('q-cloud-sync')||'offline');
   const importRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -32,11 +38,23 @@ export default function MobileOffline() {
     window.addEventListener('online', onOnline);
     window.addEventListener('offline', onOffline);
     window.addEventListener('beforeinstallprompt', onInstall);
-    if ('serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js').catch(() => undefined);
+    const onSync=(event:Event)=>setSyncStatus((event as CustomEvent).detail?.status||localStorage.getItem('q-cloud-sync')||'offline');
+    window.addEventListener('quotiq:sync-status',onSync);
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('/sw.js').then(async registration => {
+        await navigator.serviceWorker.ready;
+        const urls = performance.getEntriesByType('resource')
+          .map(entry => entry.name)
+          .filter(url => url.startsWith(window.location.origin));
+        const worker = navigator.serviceWorker.controller || registration.active;
+        worker?.postMessage({ type: 'CACHE_URLS', urls: ['/', ...urls] });
+      }).catch(() => undefined);
+    }
     return () => {
       window.removeEventListener('online', onOnline);
       window.removeEventListener('offline', onOffline);
       window.removeEventListener('beforeinstallprompt', onInstall);
+      window.removeEventListener('quotiq:sync-status',onSync);
     };
   }, []);
 
@@ -81,19 +99,19 @@ export default function MobileOffline() {
   };
 
   return <>
-    <button className={`connectivity-chip ${online ? 'is-online' : 'is-offline'}`} onClick={() => setPanel(true)} aria-label="Open offline and backup tools">
+    <button className={`connectivity-chip noPrint ${online ? 'is-online' : 'is-offline'}`} onClick={() => setPanel(true)} aria-label="Open offline and backup tools">
       {online ? <CheckCircle2 /> : <CloudOff />}
-      <span>{online ? 'Online · saved locally' : 'Offline · work is saving'}</span>
+      <span>{!online?'Offline · work is saving':syncStatus==='synced'?'Cloud sync active':syncStatus==='syncing'?'Syncing changes…':syncStatus==='error'?'Saved locally · sync retry needed':'Online · saved locally'}</span>
     </button>
 
-    {showInstall && <aside className="install-card" aria-label="Install Quotiq">
+    {showInstall && <aside className="install-card noPrint" aria-label="Install Quotiq">
       <button className="install-close" onClick={dismissInstall} aria-label="Dismiss install prompt"><X /></button>
       <div className="install-icon"><Smartphone /></div>
       <div><strong>Put Quotiq on your home screen</strong><p>Open jobs faster and keep working when the internet drops.</p></div>
       <button className="install-action" onClick={install}><Download /> Install</button>
     </aside>}
 
-    {panel && <div className="offline-modal" role="dialog" aria-modal="true" aria-label="Mobile and offline tools">
+    {panel && <div className="offline-modal noPrint" role="dialog" aria-modal="true" aria-label="Mobile and offline tools">
       <button className="offline-backdrop" onClick={() => setPanel(false)} aria-label="Close panel" />
       <section className="offline-sheet">
         <header><div><small>FIELD READY</small><h2>Mobile & offline</h2></div><button onClick={() => setPanel(false)} aria-label="Close"><X /></button></header>
